@@ -1,7 +1,7 @@
-;;; markmacro.el --- Keyboard macro for marked regions   -*- lexical-binding: t; -*-
+;;; markmacro.el --- Keyboard macro for marked objects   -*- lexical-binding: t; -*-
 
 ;; Filename: markmacro.el
-;; Description: Keyboard macro for marked regions
+;; Description: Keyboard macro for marked objects
 ;; Author: Andy Stewart <lazycat.manatee@gmail.com>
 ;; Maintainer: Andy Stewart <lazycat.manatee@gmail.com>
 ;; Copyright (C) 2022, Andy Stewart, all rights reserved.
@@ -39,7 +39,7 @@
 
 ;;; Commentary:
 ;;
-;; Keyboard macro for marked regions
+;; Keyboard macro for marked objects
 ;;
 
 ;;; Installation:
@@ -85,7 +85,7 @@
 ;;; Code:
 
 (defgroup markmacro nil
-  "Keyboard macro for marked regions."
+  "Keyboard macro for marked objects."
   :group 'markmacro)
 
 (defvar-local markmacro-overlays '())

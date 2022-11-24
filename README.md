@@ -93,7 +93,7 @@ prefix-flex-row.txt
 * `markmacro-apply-all` apply kmacro to all **mark symbols** 
 
 ### Case 5
-<img src="./images/case4.gif">
+<img src="./images/case5.gif">
 
 ```elisp
 ("s-/" . markmacro-mark-words)

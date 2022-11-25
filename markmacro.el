@@ -84,6 +84,8 @@
 
 ;;; Code:
 
+(require 'cl-macs)
+
 (defgroup markmacro nil
   "Keyboard macro for marked objects."
   :group 'markmacro)

@@ -193,7 +193,7 @@
 
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
-              (dolist (overlay markmacro-overlays)
+              (cl-dolist (overlay markmacro-overlays)
                 (when (and (>= (point) (overlay-start overlay))
                            (< (point) (overlay-end overlay)))
                   (cl-return overlay))))

@@ -296,11 +296,11 @@
            (rect-end-column (max start-column current-column)))
       (dotimes (i (1+ (- rect-end-line rect-start-line)))
         (let ((overlay (make-overlay (save-excursion
-                                       (goto-line (+ rect-start-line i))
+                                       (forward-line (+ rect-start-line i))
                                        (move-to-column rect-start-column)
                                        (point))
                                      (save-excursion
-                                       (goto-line (+ rect-start-line i))
+                                       (forward-line (+ rect-start-line i))
                                        (move-to-column rect-end-column)
                                        (point)))))
           (overlay-put overlay 'face 'markmacro-mark-rect-face)

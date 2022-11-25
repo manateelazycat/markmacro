@@ -199,6 +199,7 @@
                 (when (and (>= (point) (overlay-start overlay))
                            (< (point) (overlay-end overlay)))
                   (cl-return overlay))))
+  (advice-add 'keyboard-quit :before #'markmacro-delete-overlays)
   (kmacro-start-macro 0))
 
 (defun markmacro-apply-all ()
@@ -229,7 +230,8 @@
   (when markmacro-overlays
     (dolist (overlay markmacro-overlays)
       (delete-overlay overlay))
-    (setq-local markmacro-overlays nil)))
+    (setq-local markmacro-overlays nil)
+    (advice-remove 'keyboard-quit #'markmacro-delete-overlays)))
 
 (defun markmacro-rect-set ()
   (interactive)
@@ -284,31 +286,35 @@
     (setq-local markmacro-rect-overlays nil)))
 
 (defun markmacro-rect-monitor-post-command ()
-  (when markmacro-rect-start-point
-    (markmacro-rect-delete-overlays)
+  (if (eq this-command 'keyboard-quit)
+      (progn
+        (markmacro-rect-delete-overlays)
+        (remove-hook 'post-command-hook #'markmacro-rect-monitor-post-command t))
+    (when markmacro-rect-start-point
+      (markmacro-rect-delete-overlays)
 
-    (let* ((start-point-info (save-excursion
-                               (goto-char markmacro-rect-start-point)
-                               (cons (line-number-at-pos) (current-column))))
-           (start-line (car start-point-info))
-           (start-column (cdr start-point-info))
-           (current-line (line-number-at-pos))
-           (current-column (current-column))
-           (rect-start-line (min start-line current-line))
-           (rect-end-line (max start-line current-line))
-           (rect-start-column (min start-column current-column))
-           (rect-end-column (max start-column current-column)))
-      (dotimes (i (1+ (- rect-end-line rect-start-line)))
-        (let ((overlay (make-overlay (save-excursion
-                                       (goto-line (+ rect-start-line i))
-                                       (move-to-column rect-start-column)
-                                       (point))
-                                     (save-excursion
-                                       (goto-line (+ rect-start-line i))
-                                       (move-to-column rect-end-column)
-                                       (point)))))
-          (overlay-put overlay 'face 'markmacro-mark-rect-face)
-          (add-to-list 'markmacro-rect-overlays overlay t))))))
+      (let* ((start-point-info (save-excursion
+                                 (goto-char markmacro-rect-start-point)
+                                 (cons (line-number-at-pos) (current-column))))
+             (start-line (car start-point-info))
+             (start-column (cdr start-point-info))
+             (current-line (line-number-at-pos))
+             (current-column (current-column))
+             (rect-start-line (min start-line current-line))
+             (rect-end-line (max start-line current-line))
+             (rect-start-column (min start-column current-column))
+             (rect-end-column (max start-column current-column)))
+        (dotimes (i (1+ (- rect-end-line rect-start-line)))
+          (let ((overlay (make-overlay (save-excursion
+                                         (goto-line (+ rect-start-line i))
+                                         (move-to-column rect-start-column)
+                                         (point))
+                                       (save-excursion
+                                         (goto-line (+ rect-start-line i))
+                                         (move-to-column rect-end-column)
+                                         (point)))))
+            (overlay-put overlay 'face 'markmacro-mark-rect-face)
+            (add-to-list 'markmacro-rect-overlays overlay t)))))))
 
 (provide 'markmacro)
 

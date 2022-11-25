@@ -84,6 +84,8 @@
 
 ;;; Code:
 
+(require 'cl-macs)
+
 (defgroup markmacro nil
   "Keyboard macro for marked objects."
   :group 'markmacro)
@@ -136,15 +138,17 @@
 
       (let ((mark-bound-start (car bound))
             (mark-bound-end (cdr bound))
+            (last-point 0)
             current-bound)
         (save-excursion
           (goto-char mark-bound-start)
-          (while (<= (point) mark-bound-end)
+          (while (and (<= (point) mark-bound-end)
+                      (> (point) last-point))
             (setq current-bound (bounds-of-thing-at-point 'word))
             (when current-bound
               (add-to-list 'mark-bounds current-bound t))
-            (forward-word))
-          ))
+            (setq last-point (point))
+            (forward-word))))
 
       (dolist (bound mark-bounds)
         (let* ((overlay (make-overlay (car bound) (cdr bound))))
@@ -191,7 +195,7 @@
 
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
-              (dolist (overlay markmacro-overlays)
+              (cl-dolist (overlay markmacro-overlays)
                 (when (and (>= (point) (overlay-start overlay))
                            (< (point) (overlay-end overlay)))
                   (cl-return overlay))))

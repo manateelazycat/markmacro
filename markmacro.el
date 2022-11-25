@@ -188,6 +188,75 @@
 
       (markmacro-select-last-overlay))))
 
+(defun markmacro-mark-imenus ()
+  (interactive)
+  (let ((bound (if (region-active-p)
+                   (cons (region-beginning) (region-end))
+                 (cons (point-min) (point-max))))
+        (mark-bounds '()))
+    (when bound
+      (when (region-active-p)
+        (deactivate-mark))
+
+      (let* ((mark-bound-start (car bound))
+             (mark-bound-end (cdr bound))
+             (candidates (markmacro-imenu-get-candidates))
+             current-bound)
+        (save-excursion
+          (goto-char mark-bound-start)
+          (while (< (point) mark-bound-end)
+            (dolist (candidate candidates)
+              (when (= (point) (cadr candidate))
+                (when (search-forward (car candidate) (point-at-eol) t)
+                  (setq current-bound (cons (save-excursion
+                                              (backward-char (length (car candidate)))
+                                              (point))
+                                            (point)))
+                  (add-to-list 'mark-bounds current-bound t))))
+
+            (forward-line))
+          ))
+
+      (dolist (bound mark-bounds)
+        (let* ((overlay (make-overlay (car bound) (cdr bound))))
+          (overlay-put overlay 'face 'markmacro-mark-face)
+          (add-to-list 'markmacro-overlays overlay t)))
+
+      (markmacro-select-last-overlay))))
+
+(defun markmacro-imenu-get-candidates ()
+  (mapcar (lambda (info) (list (car info) (marker-position (cdr info))))
+          (let* ((index (ignore-errors (imenu--make-index-alist t))))
+            (when index
+              (markmacro-imenu-build-candidates
+               (delete (assoc "*Rescan*" index) index))))))
+
+(defun markmacro-imenu-build-candidates (alist)
+  (cl-remove-if
+   (lambda (c)
+     (or (string-equal (car c) "Types")
+         (string-equal (car c) "Variables")
+         ))
+   (cl-loop for elm in alist
+            nconc (cond
+                   ((imenu--subalist-p elm)
+                    (markmacro-imenu-build-candidates
+                     (cl-loop for (e . v) in (cdr elm) collect
+                              (cons
+                               e
+                               (if (integerp v) (copy-marker v) v)))))
+                   ((listp (cdr elm))
+                    (and elm (list elm)))
+                   (t
+                    (and (cdr elm)
+                         (setcdr elm (pcase (cdr elm)
+                                       ((and ov (pred overlayp))
+                                        (copy-overlay ov))
+                                       ((and mk (or (pred markerp)
+                                                    (pred integerp)))
+                                        (copy-marker mk))))
+                         (list elm)))))))
+
 (defun markmacro-select-last-overlay ()
   (when (> (length markmacro-overlays) 0)
     (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))

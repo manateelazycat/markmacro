@@ -146,6 +146,7 @@ In your `~/.emacs`, add the following two lines:
 
 (global-set-key (kbd "s-/") 'markmacro-mark-words)
 (global-set-key (kbd "s-?") 'markmacro-mark-lines)
+(global-set-key (kbd "s-L") 'markmacro-mark-imenus)
 (global-set-key (kbd "s-<") 'markmacro-apply-all)
 (global-set-key (kbd "s->") 'markmacro-apply-all-except-first)
 (global-set-key (kbd "s-M") 'markmacro-rect-set)

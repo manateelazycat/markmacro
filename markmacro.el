@@ -172,20 +172,10 @@ See `thing-at-point' for more information."
       (markmacro-select-last-overlay))))
 
 (defun markmacro-mark-lines ()
-  "Mark all lines and start kmacro recording.
-
-This function has the following usages:
-1. mark all lines in a region when it is active.
-2. mark all lines in a secondary region when it is active.
-3. mark all lines in the buffer by default."
   (interactive)
-  (let ((bound (cond
-                ((region-active-p)
-                 (cons (region-beginning) (region-end)))
-                ((overlay-start mouse-secondary-overlay)
-                 (cons (overlay-start mouse-secondary-overlay)
-                       (overlay-end mouse-secondary-overlay)))
-                (t (cons (point-min) (point-max)))))
+  (let ((bound (if (region-active-p)
+                   (cons (region-beginning) (region-end))
+                 (cons (point-min) (point-max))))
         (mark-bounds '()))
     (when bound
       (when (region-active-p)
@@ -193,20 +183,17 @@ This function has the following usages:
 
       (let ((mark-bound-start (car bound))
             (mark-bound-end (cdr bound))
-            (col-counts (markmacro-cursor-in-secondary-region-p))
             current-bound)
         (save-excursion
           (goto-char mark-bound-start)
-          (dotimes (i (count-lines mark-bound-start mark-bound-end))
+          (while (< (point) mark-bound-end)
             (unless (string-match-p "^[ ]*$" (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-              (setq current-bound (if col-counts
-                                      (cons (point) (+ (point) col-counts))
-                                    (bounds-of-thing-at-point 'line)))
+              (setq current-bound (bounds-of-thing-at-point 'line))
               (when current-bound
                 (add-to-list 'mark-bounds current-bound t)))
 
-            (unless (= i (1- (count-lines mark-bound-start mark-bound-end)))
-              (line-move 1)))))
+            (forward-line))
+          ))
 
       (dolist (bound mark-bounds)
         (let* ((overlay (make-overlay (car bound) (cdr bound))))
@@ -284,38 +271,11 @@ This function has the following usages:
                                         (copy-marker mk))))
                          (list elm)))))))
 
-(defun markmacro-cursor-in-secondary-region-p ()
-  "Return a number if current cursor is in a secondary region.
-
-Otherwise, it return nil.
-
-The number is the column count between the secondary region start column and
-end column."
-  (when-let* ((sr-ov-start (overlay-start mouse-secondary-overlay))
-              (sr-ov-end (overlay-end mouse-secondary-overlay))
-              (sr-start-point-info (save-excursion
-                                     (goto-char sr-ov-start)
-                                     (cons (line-number-at-pos) (current-column))))
-              (sr-end-point-info (save-excursion
-                                   (goto-char sr-ov-end)
-                                   (cons (line-number-at-pos) (current-column))))
-              (sr-start-line (car sr-start-point-info))
-              (sr-start-column (cdr sr-start-point-info))
-              (sr-end-line (car sr-end-point-info))
-              (sr-end-column (cdr sr-end-point-info))
-              (current-line (line-number-at-pos))
-              (current-column (current-column)))
-    (if (and (>= current-column sr-start-column )
-             (<= current-column sr-end-column))
-        (- sr-end-column sr-start-column))))
-
 (defun markmacro-secondary-region-set ()
   "Create secondary selection or a marker if no region available."
   (interactive)
   (if (region-active-p)
-      (progn
-        (secondary-selection-from-region)
-        (advice-add 'keyboard-quit :before #'markmacro-exit))
+      (secondary-selection-from-region)
     (delete-overlay mouse-secondary-overlay)
     (setq mouse-secondary-start (make-marker))
     (move-marker mouse-secondary-start (point)))
@@ -344,11 +304,10 @@ Usage:
       (while (search-forward target sec-region-end t)
         (let ((mstart (match-beginning 0))
               (mend (match-end 0)))
-          (when (markmacro-cursor-in-secondary-region-p)
-            (if (and (<= mstart current-point)
-                     (>= mend current-point))
-                (setq temp-bound (cons mstart mend))
-              (push (cons mstart mend) mark-bounds))))))
+          (if (and (<= mstart current-point)
+                   (>= mend current-point))
+              (setq temp-bound (cons mstart mend))
+            (push (cons mstart mend) mark-bounds)))))
     (add-to-list 'mark-bounds temp-bound t)
 
     (dolist (bound mark-bounds)
@@ -360,12 +319,9 @@ Usage:
     (markmacro-select-last-overlay)))
 
 (defun markmacro-select-last-overlay ()
-  (if (> (length markmacro-overlays) 0)
-      (progn
-        (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
-        (markmacro-kmacro-start))
-    (markmacro-exit)
-    (message "Nothing to selected, exit markmacro.")))
+  (when (> (length markmacro-overlays) 0)
+    (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
+    (markmacro-kmacro-start)))
 
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
@@ -373,7 +329,7 @@ Usage:
                 (when (and (>= (point) (overlay-start overlay))
                            (< (point) (overlay-end overlay)))
                   (cl-return overlay))))
-  (advice-add 'keyboard-quit :before #'markmacro-exit)
+  (advice-add 'keyboard-quit :before #'markmacro-delete-overlays)
   (kmacro-start-macro 0))
 
 (defun markmacro-apply-all ()
@@ -398,20 +354,14 @@ Usage:
 
 (defun markmacro-exit ()
   (interactive)
-  (markmacro-delete-overlays)
-
-  (delete-overlay mouse-secondary-overlay)
-  (setq mouse-secondary-start (make-marker))
-  (move-marker mouse-secondary-start (point))
-
-  (deactivate-mark t))
+  (markmacro-delete-overlays))
 
 (defun markmacro-delete-overlays ()
   (when markmacro-overlays
     (dolist (overlay markmacro-overlays)
       (delete-overlay overlay))
     (setq-local markmacro-overlays nil)
-    (advice-remove 'keyboard-quit #'markmacro-exit)))
+    (advice-remove 'keyboard-quit #'markmacro-delete-overlays)))
 
 (defun markmacro-rect-set ()
   (interactive)
@@ -455,12 +405,9 @@ Usage:
      (let* ((overlay-bound (save-excursion
                              (goto-char (overlay-start rect-overlay))
                              (bounds-of-thing-at-point 'symbol)))
-            overlay)
-       (when overlay-bound
-         (setq overlay (make-overlay (car overlay-bound) (cdr overlay-bound)))
-         (overlay-put overlay 'face 'markmacro-mark-face)
-         (add-to-list 'markmacro-overlays overlay t))
-       ))))
+            (overlay (make-overlay (car overlay-bound) (cdr overlay-bound))))
+       (overlay-put overlay 'face 'markmacro-mark-face)
+       (add-to-list 'markmacro-overlays overlay t)))))
 
 (defun markmacro-rect-delete-overlays ()
   (when markmacro-rect-overlays

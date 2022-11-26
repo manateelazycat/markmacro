@@ -172,10 +172,20 @@ See `thing-at-point' for more information."
       (markmacro-select-last-overlay))))
 
 (defun markmacro-mark-lines ()
+  "Mark all lines and start kmacro recording.
+
+This function has the following usages:
+1. mark all lines in a region when it is active.
+2. mark all lines in a secondary region when it is active.
+3. mark all lines in the buffer by default."
   (interactive)
-  (let ((bound (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (cons (point-min) (point-max))))
+  (let ((bound (cond
+                ((region-active-p)
+                 (cons (region-beginning) (region-end)))
+                ((overlay-start mouse-secondary-overlay)
+                 (cons (overlay-start mouse-secondary-overlay)
+                       (overlay-end mouse-secondary-overlay)))
+                (t (cons (point-min) (point-max)))))
         (mark-bounds '()))
     (when bound
       (when (region-active-p)
@@ -183,18 +193,21 @@ See `thing-at-point' for more information."
 
       (let ((mark-bound-start (car bound))
             (mark-bound-end (cdr bound))
+            (col-counts (markmacro-cursor-in-secondary-region-p))
             current-bound)
         (save-excursion
           (goto-char mark-bound-start)
-          (while (< (point) mark-bound-end)
+          (dotimes (i (count-lines mark-bound-start mark-bound-end))
             (unless (string-match-p "^[ ]*$" (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-              (setq current-bound (bounds-of-thing-at-point 'line))
+              (setq current-bound (if col-counts
+                                      (cons (point) (+ (point) col-counts))
+                                    (bounds-of-thing-at-point 'line)))
               (when current-bound
                 (add-to-list 'mark-bounds current-bound t)))
 
-            (forward-line))
-          ))
-
+            (unless (= i (1- (count-lines mark-bound-start mark-bound-end)))
+              (line-move 1)))))
+      
       (dolist (bound mark-bounds)
         (let* ((overlay (make-overlay (car bound) (cdr bound))))
           (overlay-put overlay 'face 'markmacro-mark-face)
@@ -271,6 +284,31 @@ See `thing-at-point' for more information."
                                         (copy-marker mk))))
                          (list elm)))))))
 
+(defun markmacro-cursor-in-secondary-region-p ()
+  "Return a number if current cursor is in a secondary region.
+
+Otherwise, it return nil.
+
+The number is the column count between the secondary region start column and
+end column."
+  (when-let* ((sr-ov-start (overlay-start mouse-secondary-overlay))
+              (sr-ov-end (overlay-end mouse-secondary-overlay))
+              (sr-start-point-info (save-excursion
+                                     (goto-char sr-ov-start)
+                                     (cons (line-number-at-pos) (current-column))))
+              (sr-end-point-info (save-excursion
+                                   (goto-char sr-ov-end)
+                                   (cons (line-number-at-pos) (current-column))))
+              (sr-start-line (car sr-start-point-info))
+              (sr-start-column (cdr sr-start-point-info))
+              (sr-end-line (car sr-end-point-info))
+              (sr-end-column (cdr sr-end-point-info))
+              (current-line (line-number-at-pos))
+              (current-column (current-column)))
+    (if (and (>= current-column sr-start-column )
+             (<= current-column sr-end-column))
+        (- sr-end-column sr-start-column))))
+
 (defun markmacro-secondary-region-set ()
   "Create secondary selection or a marker if no region available."
   (interactive)
@@ -306,10 +344,11 @@ Usage:
       (while (search-forward target sec-region-end t)
         (let ((mstart (match-beginning 0))
               (mend (match-end 0)))
-          (if (and (<= mstart current-point)
-                   (>= mend current-point))
-              (setq temp-bound (cons mstart mend))
-            (push (cons mstart mend) mark-bounds)))))
+          (when (markmacro-cursor-in-secondary-region-p)
+            (if (and (<= mstart current-point)
+                     (>= mend current-point))
+                (setq temp-bound (cons mstart mend))
+              (push (cons mstart mend) mark-bounds))))))
     (add-to-list 'mark-bounds temp-bound t)
 
     (dolist (bound mark-bounds)

@@ -106,6 +106,20 @@
   "Face for marked regions."
   :group 'markmacro)
 
+(defcustom markmacro-mark-all-in-region-type 'word
+  "The default type used by `markmacro-mark-all-in-region-type'.
+
+See `thing-at-point' for more information."
+  :type '(choice
+          (const :tag "Sym" symbol)
+          (const :tag "List" list)
+          (const :tag "Sexp" sexp)
+          (const :tag "Defun" defun)
+          (const :tag "Word" word)
+          (const :tag "Line" line)
+          (const :tag "Num" number))
+  :group 'markmacro)
+
 (cl-defmacro with-markmacro-rect (&rest body)
   `(progn
      (remove-hook 'post-command-hook #'markmacro-rect-monitor-post-command t)
@@ -256,6 +270,53 @@
                                                     (pred integerp)))
                                         (copy-marker mk))))
                          (list elm)))))))
+
+(defun markmacro-set-secondary-region ()
+  "Create secondary selection or a marker if no region available."
+  (interactive)
+  (if (region-active-p)
+      (secondary-selection-from-region)
+    (delete-overlay mouse-secondary-overlay)
+    (setq mouse-secondary-start (make-marker))
+    (move-marker mouse-secondary-start (point)))
+  (deactivate-mark t))
+
+(defun markmacro-mark-all-in-region ()
+  "Mark all in the region that is the same as the word under the cursor.
+
+Usage:
+1. Select a region.
+2. Call `markmacro-set-secondary-region'.
+3. Jump to an entity in the region, then Call `markmacro-mark-all-in-region'.
+4. Type something.
+5. Call `markmacro-apply-all' apply kmacro to all mark entities."
+  (interactive)
+  (when-let
+      ((sec-region-start (overlay-start mouse-secondary-overlay))
+       (sec-region-end (overlay-end mouse-secondary-overlay))
+       (target (thing-at-point markmacro-mark-all-in-region-type t))
+       (mark-bounds '(t))
+       (current-point (point))
+       (temp-bound 'bound))
+    (save-excursion
+      (goto-char sec-region-start)
+      (pop mark-bounds)
+      (while (search-forward target sec-region-end t)
+        (let ((mstart (match-beginning 0))
+              (mend (match-end 0)))
+          (if (and (<= mstart current-point)
+                   (>= mend current-point))
+              (setq temp-bound (cons mstart mend))
+            (push (cons mstart mend) mark-bounds)))))
+    (add-to-list 'mark-bounds temp-bound t)
+    
+    (dolist (bound mark-bounds)
+      (let* ((overlay (make-overlay (car bound) (cdr bound))))
+        (overlay-put overlay 'face 'markmacro-mark-face)
+        (add-to-list 'markmacro-overlays overlay t)))
+    
+    (delete-overlay mouse-secondary-overlay)
+    (markmacro-select-last-overlay)))
 
 (defun markmacro-select-last-overlay ()
   (when (> (length markmacro-overlays) 0)

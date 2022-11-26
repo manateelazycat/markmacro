@@ -207,7 +207,7 @@ This function has the following usages:
 
             (unless (= i (1- (count-lines mark-bound-start mark-bound-end)))
               (line-move 1)))))
-      
+
       (dolist (bound mark-bounds)
         (let* ((overlay (make-overlay (car bound) (cdr bound))))
           (overlay-put overlay 'face 'markmacro-mark-face)
@@ -360,9 +360,12 @@ Usage:
     (markmacro-select-last-overlay)))
 
 (defun markmacro-select-last-overlay ()
-  (when (> (length markmacro-overlays) 0)
-    (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
-    (markmacro-kmacro-start)))
+  (if (> (length markmacro-overlays) 0)
+      (progn
+        (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
+        (markmacro-kmacro-start))
+    (markmacro-exit)
+    (message "Nothing to selected, exit markmacro.")))
 
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
@@ -452,9 +455,12 @@ Usage:
      (let* ((overlay-bound (save-excursion
                              (goto-char (overlay-start rect-overlay))
                              (bounds-of-thing-at-point 'symbol)))
-            (overlay (make-overlay (car overlay-bound) (cdr overlay-bound))))
-       (overlay-put overlay 'face 'markmacro-mark-face)
-       (add-to-list 'markmacro-overlays overlay t)))))
+            overlay)
+       (when overlay-bound
+         (setq overlay (make-overlay (car overlay-bound) (cdr overlay-bound)))
+         (overlay-put overlay 'face 'markmacro-mark-face)
+         (add-to-list 'markmacro-overlays overlay t))
+       ))))
 
 (defun markmacro-rect-delete-overlays ()
   (when markmacro-rect-overlays

@@ -106,8 +106,8 @@
   "Face for marked regions."
   :group 'markmacro)
 
-(defcustom markmacro-mark-all-in-region-type 'word
-  "The default type used by `markmacro-mark-all-in-region-type'.
+(defcustom markmacro-secondary-region-mark-cursors-type 'symbol
+  "The default type used by `markmacro-secondary-region-mark-cursors-type'.
 
 See `thing-at-point' for more information."
   :type '(choice
@@ -271,7 +271,7 @@ See `thing-at-point' for more information."
                                         (copy-marker mk))))
                          (list elm)))))))
 
-(defun markmacro-set-secondary-region ()
+(defun markmacro-secondary-region-set ()
   "Create secondary selection or a marker if no region available."
   (interactive)
   (if (region-active-p)
@@ -281,20 +281,20 @@ See `thing-at-point' for more information."
     (move-marker mouse-secondary-start (point)))
   (deactivate-mark t))
 
-(defun markmacro-mark-all-in-region ()
+(defun markmacro-secondary-region-mark-cursors ()
   "Mark all in the region that is the same as the word under the cursor.
 
 Usage:
 1. Select a region.
-2. Call `markmacro-set-secondary-region'.
-3. Jump to an entity in the region, then Call `markmacro-mark-all-in-region'.
+2. Call `markmacro-secondary-region-set'.
+3. Jump to an entity in the region, then Call `markmacro-secondary-region-mark-cursors'.
 4. Type something.
 5. Call `markmacro-apply-all' apply kmacro to all mark entities."
   (interactive)
   (when-let
       ((sec-region-start (overlay-start mouse-secondary-overlay))
        (sec-region-end (overlay-end mouse-secondary-overlay))
-       (target (thing-at-point markmacro-mark-all-in-region-type t))
+       (target (thing-at-point markmacro-secondary-region-mark-cursors-type t))
        (mark-bounds '(t))
        (current-point (point))
        (temp-bound 'bound))
@@ -309,12 +309,12 @@ Usage:
               (setq temp-bound (cons mstart mend))
             (push (cons mstart mend) mark-bounds)))))
     (add-to-list 'mark-bounds temp-bound t)
-    
+
     (dolist (bound mark-bounds)
       (let* ((overlay (make-overlay (car bound) (cdr bound))))
         (overlay-put overlay 'face 'markmacro-mark-face)
         (add-to-list 'markmacro-overlays overlay t)))
-    
+
     (delete-overlay mouse-secondary-overlay)
     (markmacro-select-last-overlay)))
 

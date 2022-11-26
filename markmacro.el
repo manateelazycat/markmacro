@@ -275,7 +275,9 @@ See `thing-at-point' for more information."
   "Create secondary selection or a marker if no region available."
   (interactive)
   (if (region-active-p)
-      (secondary-selection-from-region)
+      (progn
+        (secondary-selection-from-region)
+        (advice-add 'keyboard-quit :before #'markmacro-exit))
     (delete-overlay mouse-secondary-overlay)
     (setq mouse-secondary-start (make-marker))
     (move-marker mouse-secondary-start (point)))
@@ -319,9 +321,12 @@ Usage:
     (markmacro-select-last-overlay)))
 
 (defun markmacro-select-last-overlay ()
-  (when (> (length markmacro-overlays) 0)
-    (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
-    (markmacro-kmacro-start)))
+  (if (> (length markmacro-overlays) 0)
+      (progn
+        (goto-char (overlay-start (nth (- (length markmacro-overlays) 1) markmacro-overlays)))
+        (markmacro-kmacro-start))
+    (markmacro-exit)
+    (message "Nothing to selected, exit markmarco.")))
 
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
@@ -329,7 +334,7 @@ Usage:
                 (when (and (>= (point) (overlay-start overlay))
                            (< (point) (overlay-end overlay)))
                   (cl-return overlay))))
-  (advice-add 'keyboard-quit :before #'markmacro-delete-overlays)
+  (advice-add 'keyboard-quit :before #'markmacro-exit)
   (kmacro-start-macro 0))
 
 (defun markmacro-apply-all ()
@@ -354,14 +359,20 @@ Usage:
 
 (defun markmacro-exit ()
   (interactive)
-  (markmacro-delete-overlays))
+  (markmacro-delete-overlays)
+
+  (delete-overlay mouse-secondary-overlay)
+  (setq mouse-secondary-start (make-marker))
+  (move-marker mouse-secondary-start (point))
+
+  (deactivate-mark t))
 
 (defun markmacro-delete-overlays ()
   (when markmacro-overlays
     (dolist (overlay markmacro-overlays)
       (delete-overlay overlay))
     (setq-local markmacro-overlays nil)
-    (advice-remove 'keyboard-quit #'markmacro-delete-overlays)))
+    (advice-remove 'keyboard-quit #'markmacro-exit)))
 
 (defun markmacro-rect-set ()
   (interactive)
@@ -405,9 +416,11 @@ Usage:
      (let* ((overlay-bound (save-excursion
                              (goto-char (overlay-start rect-overlay))
                              (bounds-of-thing-at-point 'symbol)))
-            (overlay (make-overlay (car overlay-bound) (cdr overlay-bound))))
-       (overlay-put overlay 'face 'markmacro-mark-face)
-       (add-to-list 'markmacro-overlays overlay t)))))
+            overlay)
+       (when overlay-bound
+         (setq overlay (make-overlay (car overlay-bound) (cdr overlay-bound)))
+         (overlay-put overlay 'face 'markmacro-mark-face)
+         (add-to-list 'markmacro-overlays overlay t))))))
 
 (defun markmacro-rect-delete-overlays ()
   (when markmacro-rect-overlays

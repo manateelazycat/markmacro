@@ -140,133 +140,120 @@ See `thing-at-point' for more information."
 
      (markmacro-select-last-overlay)))
 
+(cl-defmacro markmacro-mark-objects (mark-bound func)
+  `(when ,mark-bound
+     (when (region-active-p)
+       (deactivate-mark))
+
+     (dolist (bound (funcall ,func ,mark-bound))
+       (let* ((overlay (make-overlay (car bound) (cdr bound))))
+         (overlay-put overlay 'face 'markmacro-mark-face)
+         (add-to-list 'markmacro-overlays overlay t)))
+
+     (markmacro-select-last-overlay)))
+
 (defun markmacro-mark-words ()
   (interactive)
-  (let ((bound (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (bounds-of-thing-at-point 'symbol)))
-        (mark-bounds '()))
-    (when bound
-      (when (region-active-p)
-        (deactivate-mark))
+  (markmacro-mark-objects
+   (if (region-active-p)
+       (cons (region-beginning) (region-end))
+     (bounds-of-thing-at-point 'symbol))
+   (lambda (bound)
+     (let ((mark-bound-start (car bound))
+           (mark-bound-end (cdr bound))
+           (last-point 0)
+           (mark-bounds '())
+           current-bound)
+       (save-excursion
+         (goto-char mark-bound-start)
+         (while (and (<= (point) mark-bound-end)
+                     (> (point) last-point))
+           (setq current-bound (bounds-of-thing-at-point 'word))
+           (when current-bound
+             (add-to-list 'mark-bounds current-bound t))
+           (setq last-point (point))
+           (forward-word))
 
-      (let ((mark-bound-start (car bound))
-            (mark-bound-end (cdr bound))
-            (last-point 0)
-            current-bound)
-        (save-excursion
-          (goto-char mark-bound-start)
-          (while (and (<= (point) mark-bound-end)
-                      (> (point) last-point))
-            (setq current-bound (bounds-of-thing-at-point 'word))
-            (when current-bound
-              (add-to-list 'mark-bounds current-bound t))
-            (setq last-point (point))
-            (forward-word))))
-
-      (dolist (bound mark-bounds)
-        (let* ((overlay (make-overlay (car bound) (cdr bound))))
-          (overlay-put overlay 'face 'markmacro-mark-face)
-          (add-to-list 'markmacro-overlays overlay t)))
-
-      (markmacro-select-last-overlay))))
+         mark-bounds)))))
 
 (defun markmacro-mark-chars ()
   (interactive)
-  (let ((bound (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (bounds-of-thing-at-point 'string)))
-        (current-char (char-to-string (char-after)))
-        (mark-bounds '()))
-    (when bound
-      (when (region-active-p)
-        (deactivate-mark))
+  (let ((current-char (char-to-string (char-after))))
+    (markmacro-mark-objects
+     (cond ((region-active-p)
+            (cons (region-beginning) (region-end)))
+           ((overlay-start mouse-secondary-overlay)
+            (cons (overlay-start mouse-secondary-overlay) (overlay-end mouse-secondary-overlay)))
+           (t
+            (bounds-of-thing-at-point 'string)))
+     (lambda (bound)
+       (let ((mark-bound-start (car bound))
+             (mark-bound-end (cdr bound))
+             (mark-bounds '())
+             (last-point 0))
+         (save-excursion
+           (goto-char mark-bound-start)
+           (while (and (<= (point) mark-bound-end)
+                       (> (point) last-point))
+             (when (string-equal (char-to-string (char-after)) current-char)
+               (add-to-list 'mark-bounds (cons (point) (1+ (point)))))
+             (setq last-point (point))
+             (forward-char))
 
-      (let ((mark-bound-start (car bound))
-            (mark-bound-end (cdr bound))
-            (last-point 0))
-        (save-excursion
-          (goto-char mark-bound-start)
-          (while (and (<= (point) mark-bound-end)
-                      (> (point) last-point))
-            (when (string-equal (char-to-string (char-after)) current-char)
-              (add-to-list 'mark-bounds (cons (point) (1+ (point)))))
-            (setq last-point (point))
-            (forward-char))))
-
-      (dolist (bound mark-bounds)
-        (let* ((overlay (make-overlay (car bound) (cdr bound))))
-          (overlay-put overlay 'face 'markmacro-mark-face)
-          (add-to-list 'markmacro-overlays overlay t)))
-
-      (markmacro-select-last-overlay))))
+           mark-bounds))))))
 
 (defun markmacro-mark-lines ()
   (interactive)
-  (let ((bound (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (cons (point-min) (point-max))))
-        (mark-bounds '()))
-    (when bound
-      (when (region-active-p)
-        (deactivate-mark))
+  (markmacro-mark-objects
+   (if (region-active-p)
+       (cons (region-beginning) (region-end))
+     (cons (point-min) (point-max)))
+   (lambda (bound)
+     (let ((mark-bound-start (car bound))
+           (mark-bound-end (cdr bound))
+           (mark-bounds '())
+           current-bound)
+       (save-excursion
+         (goto-char mark-bound-start)
+         (while (< (point) mark-bound-end)
+           (unless (string-match-p "^[ ]*$" (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
+             (setq current-bound (bounds-of-thing-at-point 'line))
+             (when current-bound
+               (add-to-list 'mark-bounds current-bound t)))
 
-      (let ((mark-bound-start (car bound))
-            (mark-bound-end (cdr bound))
-            current-bound)
-        (save-excursion
-          (goto-char mark-bound-start)
-          (while (< (point) mark-bound-end)
-            (unless (string-match-p "^[ ]*$" (buffer-substring-no-properties (point-at-bol) (point-at-eol)))
-              (setq current-bound (bounds-of-thing-at-point 'line))
-              (when current-bound
-                (add-to-list 'mark-bounds current-bound t)))
+           (forward-line))
 
-            (forward-line))
-          ))
-
-      (dolist (bound mark-bounds)
-        (let* ((overlay (make-overlay (car bound) (cdr bound))))
-          (overlay-put overlay 'face 'markmacro-mark-face)
-          (add-to-list 'markmacro-overlays overlay t)))
-
-      (markmacro-select-last-overlay))))
+         mark-bounds
+         )))))
 
 (defun markmacro-mark-imenus ()
   (interactive)
-  (let ((bound (if (region-active-p)
-                   (cons (region-beginning) (region-end))
-                 (cons (point-min) (point-max))))
-        (mark-bounds '()))
-    (when bound
-      (when (region-active-p)
-        (deactivate-mark))
+  (markmacro-mark-objects
+   (if (region-active-p)
+       (cons (region-beginning) (region-end))
+     (cons (point-min) (point-max)))
+   (lambda (bound)
+     (let* ((mark-bound-start (car bound))
+            (mark-bound-end (cdr bound))
+            (candidates (markmacro-imenu-get-candidates))
+            (mark-bounds '())
+            current-bound)
+       (save-excursion
+         (goto-char mark-bound-start)
+         (while (< (point) mark-bound-end)
+           (dolist (candidate candidates)
+             (when (= (point) (cadr candidate))
+               (when (search-forward (car candidate) (point-at-eol) t)
+                 (setq current-bound (cons (save-excursion
+                                             (backward-char (length (car candidate)))
+                                             (point))
+                                           (point)))
+                 (add-to-list 'mark-bounds current-bound t))))
 
-      (let* ((mark-bound-start (car bound))
-             (mark-bound-end (cdr bound))
-             (candidates (markmacro-imenu-get-candidates))
-             current-bound)
-        (save-excursion
-          (goto-char mark-bound-start)
-          (while (< (point) mark-bound-end)
-            (dolist (candidate candidates)
-              (when (= (point) (cadr candidate))
-                (when (search-forward (car candidate) (point-at-eol) t)
-                  (setq current-bound (cons (save-excursion
-                                              (backward-char (length (car candidate)))
-                                              (point))
-                                            (point)))
-                  (add-to-list 'mark-bounds current-bound t))))
+           (forward-line))
 
-            (forward-line))
-          ))
-
-      (dolist (bound mark-bounds)
-        (let* ((overlay (make-overlay (car bound) (cdr bound))))
-          (overlay-put overlay 'face 'markmacro-mark-face)
-          (add-to-list 'markmacro-overlays overlay t)))
-
-      (markmacro-select-last-overlay))))
+         mark-bounds
+         )))))
 
 (defun markmacro-imenu-get-candidates ()
   (mapcar (lambda (info) (list (car info) (marker-position (cdr info))))

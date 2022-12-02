@@ -171,6 +171,36 @@ See `thing-at-point' for more information."
 
       (markmacro-select-last-overlay))))
 
+(defun markmacro-mark-chars ()
+  (interactive)
+  (let ((bound (if (region-active-p)
+                   (cons (region-beginning) (region-end))
+                 (bounds-of-thing-at-point 'string)))
+        (current-char (char-to-string (char-after)))
+        (mark-bounds '()))
+    (when bound
+      (when (region-active-p)
+        (deactivate-mark))
+
+      (let ((mark-bound-start (car bound))
+            (mark-bound-end (cdr bound))
+            (last-point 0))
+        (save-excursion
+          (goto-char mark-bound-start)
+          (while (and (<= (point) mark-bound-end)
+                      (> (point) last-point))
+            (when (string-equal (char-to-string (char-after)) current-char)
+              (add-to-list 'mark-bounds (cons (point) (1+ (point)))))
+            (setq last-point (point))
+            (forward-char))))
+
+      (dolist (bound mark-bounds)
+        (let* ((overlay (make-overlay (car bound) (cdr bound))))
+          (overlay-put overlay 'face 'markmacro-mark-face)
+          (add-to-list 'markmacro-overlays overlay t)))
+
+      (markmacro-select-last-overlay))))
+
 (defun markmacro-mark-lines ()
   (interactive)
   (let ((bound (if (region-active-p)

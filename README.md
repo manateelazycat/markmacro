@@ -236,7 +236,27 @@ prefix-flex-row.txt
 * `mark-sexp` to selection region of `markmacro-mark-words` function 
 * `markmacro-secondary-region-set` translate region to secondary region
 * Move cursor to target (`current-bound` in this case), `markmacro-secondary-region-mark-cursors` mark **all targets** in secondary region
-* Type something, `markmacro-apply-all` apply kmacro to all **all targets**
+* Type something, `markmacro-apply-all` apply kmacro to **all targets**
+
+### Case 8
+<img src="./images/case8.gif">
+
+```elisp
+window.scrollTo(0, 0); document.getElementsByTagName('html')[0].style.visibility = 'hidden'; document.getElementsByClassName('lf_area')[0].style.visibility = 'visible'; document.getElementsByTagName('header')[0].style.display = 'none'; document.getElementsByClassName('contentPadding')[0].style.padding = '10px';
+
+=> 
+
+window.scrollTo(0, 0);
+document.getElementsByTagName('html')[0].style.visibility = 'hidden';
+document.getElementsByClassName('lf_area')[0].style.visibility = 'visible';
+document.getElementsByTagName('header')[0].style.display = 'none';
+document.getElementsByClassName('contentPadding')[0].style.padding = '10px';
+```
+
+* Move cursor to left position of `;`
+* `markmacro-mark-chars` to selection **mark chars** `;` in string
+* `forward-char` and `newline`
+* `markmacro-apply-all` apply kmacro to all **mark chars**
 
 ## Installation
 

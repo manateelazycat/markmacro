@@ -348,8 +348,9 @@ Usage:
 (defun markmacro-kmacro-start ()
   (setq-local markmacro-start-overlay
               (cl-dolist (overlay markmacro-overlays)
-                (when (and (>= (point) (overlay-start overlay))
-                           (< (point) (overlay-end overlay)))
+                (when (or (and (>= (point) (overlay-start overlay))
+                               (< (point) (overlay-end overlay)))
+                          (= (point) (overlay-start overlay) (overlay-end overlay)))
                   (cl-return overlay))))
   (advice-add 'keyboard-quit :before #'markmacro-exit)
   (kmacro-start-macro 0))

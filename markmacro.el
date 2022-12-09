@@ -300,7 +300,7 @@ See `thing-at-point' for more information."
     (move-marker mouse-secondary-start (point)))
   (deactivate-mark t))
 
-(defun markmacro-secondary-region-mark-cursors ()
+(defun markmacro-secondary-region-mark-cursors (arg)
   "Mark all in the region that is the same as the word under the cursor.
 
 Usage:
@@ -309,11 +309,12 @@ Usage:
 3. Jump to an entity in the region, then Call `markmacro-secondary-region-mark-cursors'.
 4. Type something.
 5. Call `markmacro-apply-all' apply kmacro to all mark entities."
-  (interactive)
+  (interactive "P")
   (when-let
       ((sec-region-start (overlay-start mouse-secondary-overlay))
        (sec-region-end (overlay-end mouse-secondary-overlay))
-       (target (thing-at-point markmacro-secondary-region-mark-cursors-type t))
+       (target (thing-at-point
+                (if arg 'char markmacro-secondary-region-mark-cursors-type) t))
        (mark-bounds '(t))
        (current-point (point))
        (temp-bound 'bound))

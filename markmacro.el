@@ -313,8 +313,13 @@ Usage:
   (when-let
       ((sec-region-start (overlay-start mouse-secondary-overlay))
        (sec-region-end (overlay-end mouse-secondary-overlay))
-       (target (thing-at-point
-                (if arg 'char markmacro-secondary-region-mark-cursors-type) t))
+       (target
+        (cond (arg
+               (thing-at-point 'char t))
+              ((region-active-p)
+               (buffer-substring-no-properties (region-beginning) (region-end)))
+              (t
+               (thing-at-point markmacro-secondary-region-mark-cursors-type t))))
        (mark-bounds '(t))
        (current-point (point))
        (temp-bound 'bound))

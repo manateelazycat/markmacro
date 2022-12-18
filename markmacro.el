@@ -291,13 +291,13 @@ See `thing-at-point' for more information."
 (defun markmacro-secondary-region-set ()
   "Create secondary selection or a marker if no region available."
   (interactive)
-  (if (region-active-p)
-      (progn
-        (secondary-selection-from-region)
-        (advice-add 'keyboard-quit :before #'markmacro-exit))
-    (delete-overlay mouse-secondary-overlay)
-    (setq mouse-secondary-start (make-marker))
-    (move-marker mouse-secondary-start (point)))
+  (cond ((region-active-p)
+         (secondary-selection-from-region)
+         (advice-add 'keyboard-quit :before #'markmacro-exit))
+        (t
+         (delete-overlay mouse-secondary-overlay)
+         (move-overlay mouse-secondary-overlay (point-at-bol) (point-at-eol))
+         (advice-add 'keyboard-quit :before #'markmacro-exit)))
   (deactivate-mark t))
 
 (defun markmacro-secondary-region-mark-cursors (arg)

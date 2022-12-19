@@ -304,15 +304,14 @@ See `thing-at-point' for more information."
   "Mark all in the region that is the same as the word under the cursor.
 
 Usage:
-1. Select a region.
-2. Call `markmacro-secondary-region-set'.
-3. Jump to an entity in the region, then Call `markmacro-secondary-region-mark-cursors'.
-4. Type something.
-5. Call `markmacro-apply-all' apply kmacro to all mark entities."
+1. Select a region and use `markmacro-secondary-region-set' mark secondary region, mark all buffer if not call `markmacro-secondary-region-set'
+2. Jump to an entity in the region, region call `markmacro-secondary-region-mark-cursors' or call `markmacro-secondary-region-mark-cursors' directly
+3. Type something.
+4. Call `markmacro-apply-all' apply kmacro to all mark entities."
   (interactive "P")
   (when-let
-      ((sec-region-start (overlay-start mouse-secondary-overlay))
-       (sec-region-end (overlay-end mouse-secondary-overlay))
+      ((sec-region-start (or (overlay-start mouse-secondary-overlay) (point-min)))
+       (sec-region-end (or (overlay-end mouse-secondary-overlay) (point-max)))
        (target
         (cond (arg
                (thing-at-point 'char t))

@@ -142,13 +142,14 @@ See `thing-at-point' for more information."
 
 (cl-defmacro markmacro-mark-objects (mark-bound func)
   `(when ,mark-bound
-     (when (region-active-p)
-       (deactivate-mark))
-
      (dolist (bound (funcall ,func ,mark-bound))
        (let* ((overlay (make-overlay (car bound) (cdr bound))))
          (overlay-put overlay 'face 'markmacro-mark-face)
          (add-to-list 'markmacro-overlays overlay t)))
+
+     ;; Deactivate mark after update `markmacro-overlays'
+     (when (region-active-p)
+       (deactivate-mark))
 
      (markmacro-select-last-overlay)))
 
@@ -178,7 +179,8 @@ See `thing-at-point' for more information."
 
 (defun markmacro-mark-chars ()
   (interactive)
-  (let ((current-char (char-to-string (char-after))))
+  (when-let* ((char (char-after))
+              (current-char (char-to-string char)))
     (markmacro-mark-objects
      (cond ((region-active-p)
             (cons (region-beginning) (region-end)))

@@ -228,19 +228,28 @@ See `thing-at-point' for more information."
          mark-bounds
          )))))
 
-(defun markmacro-get-function-node ()
+(defun markmacro-find-parent-node-match (node-types)
   (treesit-parent-until
    (treesit-node-at (point))
    (lambda (parent)
-     (member (treesit-node-type parent) '("call_expression" "declaration" "function_definition")))))
+     (member (treesit-node-type parent) node-types))))
 
 (defun markmacro-mark-parameters ()
   (interactive)
   (when (require 'treesit nil t)
-    (let* (param-nodes)
+    (let* ((argument-lis-node (markmacro-find-parent-node-match '("argument_list" "tuple" "tuple_pattern" "pair" "dictionary" "list")))
+           (function-node (markmacro-find-parent-node-match '("call_expression" "declaration" "function_definition")))
+           (import-node (treesit-node-on (line-beginning-position) (line-end-position)))
+           param-nodes)
       (cond
+       ;; Mark argument list.
+       (argument-lis-node
+        (setq param-nodes (treesit-filter-child
+                           argument-lis-node
+                           (lambda (c)
+                             (not (member (treesit-node-type c) '("(" ")")))))))
        ;; Mark parameters in function.
-       ((when-let (function-node (markmacro-get-function-node)))
+       (function-node
         (when-let (parameters-node (treesit-filter-child
                                     function-node
                                     (lambda (c)
@@ -250,12 +259,12 @@ See `thing-at-point' for more information."
                              (lambda (c)
                                (member (treesit-node-type c) '("identifier")))))))
        ;; Mark parameters in import code.
-       ((when-let (import-node (treesit-node-on (line-beginning-position) (line-end-position)))
-          (when (string-equal (treesit-node-type import-node) "import_from_statement")
-            (setq param-nodes (cdr (treesit-filter-child
-                                    import-node
-                                    (lambda (c)
-                                      (member (treesit-node-type c) '("dotted_name"))))))))))
+       (import-node
+        (when (string-equal (treesit-node-type import-node) "import_from_statement")
+          (setq param-nodes (cdr (treesit-filter-child
+                                  import-node
+                                  (lambda (c)
+                                    (member (treesit-node-type c) '("dotted_name")))))))))
 
       (dolist (node param-nodes)
         (let* ((overlay (make-overlay (treesit-node-start node) (treesit-node-end node))))

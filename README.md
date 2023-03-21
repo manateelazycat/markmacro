@@ -285,6 +285,28 @@ $ find .git/objects -type f
 * `markmacro-secondary-region-mark-cursors` mark all **.git**
 * Press RETURN char, `markmacro-apply-all` apply kmacro to **.git**
 
+### Case 10
+<img src="./images/case10.gif">
+
+```python
+def send_stream_part_request(self, role, prompt, message_parts, callback):
+    pass
+=> 
+
+def send_stream_part_request(
+        self, 
+        role, 
+        prompt, 
+        message_parts, 
+        callback):
+    pass
+```
+
+* Move cursor to function
+* `markmacro-mark-function-parameters` to selection **parameters**
+* `newline`
+* `markmacro-apply-all` apply kmacro to all **parameters**
+
 ## Installation
 
 Clone or download this repository (path of the folder is the

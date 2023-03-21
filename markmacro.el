@@ -228,6 +228,32 @@ See `thing-at-point' for more information."
          mark-bounds
          )))))
 
+(defun markmacro-get-function-node ()
+  (treesit-parent-until
+   (treesit-node-at (point))
+   (lambda (parent)
+     (member (treesit-node-type parent) '("call_expression" "declaration" "function_definition")))))
+
+(defun markmacro-mark-function-parameters ()
+  (interactive)
+  (when (require 'treesit nil t)
+    (when-let* ((function-node (markmacro-get-function-node))
+                (parameters-node (treesit-filter-child
+                                  function-node
+                                  (lambda (c)
+                                    (member (treesit-node-type c) '("parameters")))))
+                (param-nodes (treesit-filter-child
+                              (nth 0 parameters-node)
+                              (lambda (c)
+                                (member (treesit-node-type c) '("identifier"))))))
+
+      (dolist (node param-nodes)
+        (let* ((overlay (make-overlay (treesit-node-start node) (treesit-node-end node))))
+          (overlay-put overlay 'face 'markmacro-mark-face)
+          (add-to-list 'markmacro-overlays overlay t)))
+
+      (markmacro-select-first-overlay))))
+
 (defun markmacro-mark-imenus ()
   (interactive)
   (markmacro-mark-objects
@@ -343,6 +369,14 @@ Usage:
 
     (delete-overlay mouse-secondary-overlay)
     (markmacro-select-last-overlay)))
+
+(defun markmacro-select-first-overlay ()
+  (if (> (length markmacro-overlays) 0)
+      (progn
+        (goto-char (overlay-start (nth 0 markmacro-overlays)))
+        (markmacro-kmacro-start))
+    (markmacro-exit)
+    (message "Nothing to selected, exit markmarco.")))
 
 (defun markmacro-select-last-overlay ()
   (if (> (length markmacro-overlays) 0)

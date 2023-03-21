@@ -234,18 +234,28 @@ See `thing-at-point' for more information."
    (lambda (parent)
      (member (treesit-node-type parent) '("call_expression" "declaration" "function_definition")))))
 
-(defun markmacro-mark-function-parameters ()
+(defun markmacro-mark-parameters ()
   (interactive)
   (when (require 'treesit nil t)
-    (when-let* ((function-node (markmacro-get-function-node))
-                (parameters-node (treesit-filter-child
-                                  function-node
-                                  (lambda (c)
-                                    (member (treesit-node-type c) '("parameters")))))
-                (param-nodes (treesit-filter-child
-                              (nth 0 parameters-node)
-                              (lambda (c)
-                                (member (treesit-node-type c) '("identifier"))))))
+    (let* (param-nodes)
+      (cond
+       ;; Mark parameters in function.
+       ((when-let (function-node (markmacro-get-function-node)))
+        (when-let (parameters-node (treesit-filter-child
+                                    function-node
+                                    (lambda (c)
+                                      (member (treesit-node-type c) '("parameters")))))
+          (setq param-nodes (treesit-filter-child
+                             (nth 0 parameters-node)
+                             (lambda (c)
+                               (member (treesit-node-type c) '("identifier")))))))
+       ;; Mark parameters in import code.
+       ((when-let (import-node (treesit-node-on (line-beginning-position) (line-end-position)))
+          (when (string-equal (treesit-node-type import-node) "import_from_statement")
+            (setq param-nodes (cdr (treesit-filter-child
+                                    import-node
+                                    (lambda (c)
+                                      (member (treesit-node-type c) '("dotted_name"))))))))))
 
       (dolist (node param-nodes)
         (let* ((overlay (make-overlay (treesit-node-start node) (treesit-node-end node))))

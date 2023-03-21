@@ -303,7 +303,7 @@ def send_stream_part_request(
 ```
 
 * Move cursor to function
-* `markmacro-mark-function-parameters` to selection **parameters**
+* `markmacro-mark-parameters` to selection **parameters**
 * `newline`
 * `markmacro-apply-all` apply kmacro to all **parameters**
 

@@ -237,8 +237,8 @@ See `thing-at-point' for more information."
 (defun markmacro-mark-parameters ()
   (interactive)
   (when (require 'treesit nil t)
-    (let* ((argument-lis-node (markmacro-find-parent-node-match '("argument_list" "tuple" "tuple_pattern" "pair" "dictionary" "list")))
-           (function-node (markmacro-find-parent-node-match '("call_expression" "declaration" "function_definition")))
+    (let* ((argument-lis-node (markmacro-find-parent-node-match '("argument_list" "arguments" "tuple" "tuple_pattern" "pair" "dictionary" "list")))
+           (function-node (markmacro-find-parent-node-match '("call_expression" "declaration" "function_definition" "identifier")))
            (import-node (treesit-node-on (line-beginning-position) (line-end-position)))
            param-nodes)
       (cond

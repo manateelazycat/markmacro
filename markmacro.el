@@ -271,7 +271,7 @@ See `thing-at-point' for more information."
           (overlay-put overlay 'face 'markmacro-mark-face)
           (add-to-list 'markmacro-overlays overlay t)))
 
-      (markmacro-select-first-overlay))))
+      (markmacro-select-last-overlay))))
 
 (defun markmacro-mark-imenus ()
   (interactive)

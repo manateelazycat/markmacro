@@ -153,6 +153,33 @@ See `thing-at-point' for more information."
 
      (markmacro-select-last-overlay)))
 
+(defun markmacro-mark-symbols ()
+  (interactive)
+  (markmacro-mark-objects
+   (if (region-active-p)
+       (cons (region-beginning) (region-end))
+     (cons (point-min) (point-max)))
+   (lambda (bound)
+     (let ((mark-bound-start (car bound))
+           (mark-bound-end (cdr bound))
+           (symbol (thing-at-point 'symbol))
+           (mark-bounds '())
+           (found-symbol t)
+           current-bound)
+       (save-excursion
+         (goto-char mark-bound-start)
+         (while (and (<= (point) mark-bound-end)
+                     found-symbol)
+           (setq found-symbol (search-forward symbol nil t))
+           (setq current-bound (cons (save-excursion
+                                       (backward-char (length symbol))
+                                       (point))
+                                     (point)))
+           (when current-bound
+             (add-to-list 'mark-bounds current-bound t)))
+
+         mark-bounds)))))
+
 (defun markmacro-mark-words ()
   (interactive)
   (markmacro-mark-objects

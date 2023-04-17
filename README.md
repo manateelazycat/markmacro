@@ -307,6 +307,38 @@ def send_stream_part_request(
 * `newline`
 * `markmacro-apply-all` apply kmacro to all **parameters**
 
+### Case 11
+<img src="./images/case11.gif">
+
+```python
+--- Cool
+
+--- [04:33:36.162537] Send textDocument/didChange notification to 'ruff' for project test.py
+
+--- [04:33:36.163186] Recv window/logMessage notification from 'ruff' for project test.py
+
+Normal line
+
+--- Cool feature
+
+=> 
+
+--- Cool feature
+
+--- Cool feature
+
+--- Cool feature
+
+Normal line
+
+--- Cool feature
+```
+
+* Move cursor to `---`
+* `markmacro-mark-symbols` to selection all `---` in buffer
+* Type something
+* `markmacro-apply-all` apply kmacro to all lines start with `---` 
+
 ## Installation
 
 Clone or download this repository (path of the folder is the
